@@ -53,7 +53,7 @@ const Play = () => {
       // If no wallet address exists in context, trigger the modal registration form
       setShowRegistrationModal(true);
     } else {
-      // If address already exists, join the table directly
+      // If address already exists, join table 1 directly
       console.log("Attempting to join table 1 with wallet:", walletAddress);
       joinTable(1);
     }
@@ -97,28 +97,33 @@ const Play = () => {
     }
   };
 
+  // 3. Update bet defaults smoothly when table state changes
   useEffect(() => {
     if (currentTable) {
-      currentTable.callAmount > currentTable.minBet
-        ? setBet(currentTable.callAmount)
-        : currentTable.pot > 0
-        ? setBet(currentTable.minRaise)
-        : setBet(currentTable.minBet)
+      if (currentTable.callAmount > currentTable.minBet) {
+        setBet(currentTable.callAmount);
+      } else if (currentTable.pot > 0) {
+        setBet(currentTable.minRaise || currentTable.minBet || 1000);
+      } else {
+        setBet(currentTable.minBet || 1000);
+      }
     }
-  }, [currentTable])
+  }, [currentTable]);
 
-  // Check if it is currently this seated player's turn (handles 0-index vs 1-index edge cases)
+  // 4. Robust turn verification function
   const isPlayerTurn = () => {
     if (!currentTable || seatId === null || seatId === undefined) return false;
     
+    // Check both current index and 1-based offset index
     const targetSeat = currentTable.seats?.[seatId] || currentTable.seats?.[seatId - 1];
     if (targetSeat && targetSeat.turn) return true;
 
-    // Fallback: Check if actionTo matches seatId
+    // Fallback: Check if activeSeat or actionTo matches seatId
     return (
       currentTable.actionTo === seatId || 
       currentTable.actionTo === (seatId - 1) ||
-      currentTable.activeSeat === seatId
+      currentTable.activeSeat === seatId ||
+      currentTable.activeSeat === (seatId - 1)
     );
   };
 
@@ -200,6 +205,7 @@ const Play = () => {
             </PositionedUISlot>
           </>
         )}
+
         <PokerTableWrapper>
           <PokerTable />
           {currentTable && (
@@ -220,7 +226,7 @@ const Play = () => {
                 <Seat seatNumber={5} currentTable={currentTable} sitDown={sitDown} />
               </PositionedUISlot>
               <PositionedUISlot top="-25%" scale="0.55" origin="top center" style={{ zIndex: '1' }}>
-                <BrandingImage></BrandingImage>
+                <BrandingImage />
               </PositionedUISlot>
               <PositionedUISlot
                 width="100%"
@@ -257,7 +263,7 @@ const Play = () => {
           )}
         </PokerTableWrapper>
 
-        {/* Render GameUI if table exists and it's the current player's turn */}
+        {/* Render GameUI whenever player is seated and it is their turn */}
         {currentTable && seatId !== null && seatId !== undefined && isPlayerTurn() && (
           <GameUI
             currentTable={currentTable}
