@@ -10,8 +10,17 @@ const Button = styled.button`
   outline: none;
   border: 2px solid;
   background-color: transparent;
-  border-image: linear-gradient(to bottom, ${(props) => props.theme.colors.borderFColor}, ${(props) => props.theme.colors.borderSColor}) 2;
-  background-image: linear-gradient(to bottom, ${(props) => props.theme.colors.buttonFColor}, ${(props) => props.theme.colors.buttonSColor});
+  border-image: linear-gradient(
+      to bottom,
+      ${(props) => props.theme.colors.borderFColor},
+      ${(props) => props.theme.colors.borderSColor}
+    )
+    2;
+  background-image: linear-gradient(
+    to bottom,
+    ${(props) => props.theme.colors.buttonFColor},
+    ${(props) => props.theme.colors.buttonSColor}
+  );
   background-origin: border-box;
   color: white;
   clip-path: polygon(
@@ -31,63 +40,48 @@ const Button = styled.button`
   line-height: 1.3rem;
   min-width: 150px;
   cursor: pointer;
-  transition: all 0.3s;
+  pointer-events: auto; /* Forces click events to register through clip-path */
+  user-select: none;
+  transition: all 0.2s ease-in-out;
 
-  &:visited {
+  &:hover {
+    filter: brightness(1.15);
+    transform: translateY(-1px);
   }
 
-  &:hover,
   &:active {
+    transform: translateY(1px);
+    filter: brightness(0.9);
   }
 
   &:focus {
     outline: none;
   }
 
+  /* CRITICAL FIX: Proper styling for disabled buttons so you know when a button is locked */
   &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed !important;
+    filter: grayscale(80%);
+    pointer-events: none;
+    transform: none !important;
   }
 
   ${(props) =>
     props.primary &&
     css`
-      ${'' /* color: ${(props) => props.theme.colors.primaryCta}; */}
       padding: ${(props) => {
         if (props.large) return 'calc(1rem - 2px) calc(2rem - 2px)';
         else if (props.small) return 'calc(0.5rem - 2px) calc(1rem - 2px)';
         else return 'calc(0.75rem - 2px) calc(1.5rem - 2px)';
       }};
-
-      &,
-      &:visited {
-      }
-
-      &:hover,
-      &:active {
-      }
-
-      &:focus {
-      }
-
-      &:disabled {
-      }
     `}
 
   ${(props) =>
     props.secondary &&
     css`
-      &,
-      &:visited {
-      }
-
-      &:hover,
-      &:active {
-      }
-
       &:focus {
         outline: none;
-      }
-
-      &:disabled {
       }
     `}
   
@@ -105,7 +99,7 @@ const Button = styled.button`
     css`
       font-size: 1.1rem;
       line-height: 1.1rem;
-      min-width: 125px;
+      min-width: 100px; /* Reduced slightly to prevent overflow on smaller screens */
       padding: 0.5rem 0.3rem;
     `}
   
@@ -115,13 +109,13 @@ const Button = styled.button`
       width: 100%;
     `}
 
-    @media screen and (max-width: 1024px) {
+  @media screen and (max-width: 1024px) {
     ${(props) =>
       props.large &&
       css`
         font-size: 1.4rem;
         line-height: 1.4rem;
-        min-width: 250px;
+        min-width: 200px;
         padding: 0.75rem 1.5rem;
       `}
 
