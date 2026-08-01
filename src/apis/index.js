@@ -2,8 +2,8 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 
 // Hardcoded URI to ensure connection to your backend on port 7778
-const SERVER_URI = 'https://sparkling-gecko-148372.netlify.app';
-
+//const SERVER_URI = 'https://sparkling-gecko-148372.netlify.app';
+const SERVER_URI = 'https://pokerserver-production-b6bc.up.railway.app/';
 export const useApi = () => {
   const getUserProfile = async (address) => {
     try {
