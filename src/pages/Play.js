@@ -70,7 +70,8 @@ const Play = () => {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch('https://sparkling-gecko-148372.netlify.app/api/players', {
+      //const response = await fetch('https://sparkling-gecko-148372.netlify.app/api/players', {
+      const response = await fetch('https://pokerserver-production-b6bc.up.railway.app/api/players', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: playerName.trim(), address: inputAddress.trim() })
