@@ -29,16 +29,20 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
   const { chipsAmount } = useContext(globalContext)
   const { standUp, seatId, rebuy } = useContext(gameContext)
 
-  // 1. Resolve seat object safely (handles direct index, 1-based offset, or matching seat object properties)
+  // 1. Resolve seat object safely (handles both Objects and Arrays without crashing .find())
   const resolveSeat = () => {
     if (!currentTable?.seats) return null;
 
-    // Check direct array index (1-based vs 0-based)
+    // Check direct key access first
     if (currentTable.seats[seatNumber]) return currentTable.seats[seatNumber];
     if (currentTable.seats[seatNumber - 1]) return currentTable.seats[seatNumber - 1];
 
-    // Search seats array for matching seat ID or seatNumber property
-    return currentTable.seats.find(
+    // Safely convert object/array values into an iterable array before calling .find()
+    const seatsList = Array.isArray(currentTable.seats)
+      ? currentTable.seats
+      : Object.values(currentTable.seats);
+
+    return seatsList.find(
       (s) => s && (s.seatNumber === seatNumber || s.id === seatNumber || s.seatId === seatNumber)
     );
   };
