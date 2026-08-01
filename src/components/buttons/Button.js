@@ -12,14 +12,14 @@ const Button = styled.button`
   background-color: transparent;
   border-image: linear-gradient(
       to bottom,
-      ${(props) => props.theme.colors.borderFColor},
-      ${(props) => props.theme.colors.borderSColor}
+      ${(props) => props.theme?.colors?.borderFColor || '#21a68e'},
+      ${(props) => props.theme?.colors?.borderSColor || '#0d3733'}
     )
     2;
   background-image: linear-gradient(
     to bottom,
-    ${(props) => props.theme.colors.buttonFColor},
-    ${(props) => props.theme.colors.buttonSColor}
+    ${(props) => props.theme?.colors?.buttonFColor || '#187969'},
+    ${(props) => props.theme?.colors?.buttonSColor || '#081c1c'}
   );
   background-origin: border-box;
   color: white;
@@ -34,13 +34,12 @@ const Button = styled.button`
     0% calc(100% - 5px),
     0% 5px
   );
-  font-family: ${(props) => props.theme.fonts.fontFamilySansSerif};
+  font-family: ${(props) => props.theme?.fonts?.fontFamilySansSerif || 'sans-serif'};
   font-weight: 400;
   font-size: 1.3rem;
   line-height: 1.3rem;
   min-width: 150px;
   cursor: pointer;
-  pointer-events: auto; /* Forces click events to register through clip-path */
   user-select: none;
   transition: all 0.2s ease-in-out;
 
@@ -58,12 +57,11 @@ const Button = styled.button`
     outline: none;
   }
 
-  /* CRITICAL FIX: Proper styling for disabled buttons so you know when a button is locked */
+  /* Visually indicate disabled state without breaking pointer event loops */
   &:disabled {
-    opacity: 0.45;
+    opacity: 0.4;
     cursor: not-allowed !important;
     filter: grayscale(80%);
-    pointer-events: none;
     transform: none !important;
   }
 
@@ -99,7 +97,7 @@ const Button = styled.button`
     css`
       font-size: 1.1rem;
       line-height: 1.1rem;
-      min-width: 100px; /* Reduced slightly to prevent overflow on smaller screens */
+      min-width: 100px;
       padding: 0.5rem 0.3rem;
     `}
   
