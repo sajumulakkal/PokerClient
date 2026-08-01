@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react'
+ import React, { useContext, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Container from '../components/layout/Container'
 import Button from '../components/buttons/Button'
@@ -42,7 +42,7 @@ const Play = () => {
   const [inputAddress, setInputAddress] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // 1. Check if socket exists and if we have a wallet address
+  // 1. Check socket and wallet address
   useEffect(() => {
     if (!socket) {
       navigate("/")
@@ -52,13 +52,12 @@ const Play = () => {
     if (!walletAddress) {
       setShowRegistrationModal(true);
     } else {
-      console.log("Attempting to join table 1 with wallet:", walletAddress);
       joinTable(1);
     }
     // eslint-disable-next-line
   }, [socket, walletAddress])
 
-  // 2. Handle registering player to MongoDB via API
+  // 2. Register Player to MongoDB
   const handleRegisterPlayer = async (e) => {
     e.preventDefault();
     if (!playerName.trim() || !inputAddress.trim()) {
@@ -79,21 +78,18 @@ const Play = () => {
         throw new Error(data.message || 'Failed to save player');
       }
 
-      console.log('Player successfully registered in MongoDB:', data);
-
       setWalletAddress(inputAddress.trim());
       setShowRegistrationModal(false);
-
       joinTable(1);
     } catch (error) {
       console.error('Error saving player:', error);
-      alert('Error saving player to database. Check server connection.');
+      alert('Error saving player to database.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // 3. Smoothly calculate initial bet when currentTable changes
+  // 3. Update bet defaults smoothly
   useEffect(() => {
     if (currentTable) {
       if (currentTable.callAmount > currentTable.minBet) {
@@ -106,15 +102,21 @@ const Play = () => {
     }
   }, [currentTable]);
 
-  // Debug logger to trace state changes in browser console
-  useEffect(() => {
-    if (currentTable) {
-      console.log("=== TABLE DEBUG LOG ===");
-      console.log("My Seat ID:", seatId);
-      console.log("Active Turn (actionTo / activeSeat):", currentTable.actionTo, currentTable.activeSeat);
-      console.log("Seats Array:", currentTable.seats);
-    }
-  }, [currentTable, seatId]);
+  // Turn detection logic
+  const isMyTurn = () => {
+    if (!currentTable || seatId === null || seatId === undefined) return false;
+    
+    // Check if the seat is marked active/turn
+    const currentSeat = currentTable.seats?.[seatId] || currentTable.seats?.[seatId - 1];
+    if (currentSeat && currentSeat.turn) return true;
+
+    return (
+      currentTable.actionTo === seatId ||
+      currentTable.actionTo === (seatId - 1) ||
+      currentTable.activeSeat === seatId ||
+      currentTable.activeSeat === (seatId - 1)
+    );
+  };
 
   return (
     <>
@@ -173,7 +175,6 @@ const Play = () => {
         }}
         className="play-area"
       >
-        {/* Fallback indicator */}
         {!currentTable && !showRegistrationModal && (
           <div style={{ position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)', color: 'yellow', zIndex: 100, textAlign: 'center' }}>
             <h3>Connecting to Table 1... Waiting for server response.</h3>
@@ -181,18 +182,11 @@ const Play = () => {
         )}
 
         {currentTable && (
-          <>
-            <PositionedUISlot
-              top="2vh"
-              left="1.5rem"
-              scale="0.65"
-              style={{ zIndex: '50' }}
-            >
-              <Button small secondary onClick={leaveTable}>
-                Leave
-              </Button>
-            </PositionedUISlot>
-          </>
+          <PositionedUISlot top="2vh" left="1.5rem" scale="0.65" style={{ zIndex: '50' }}>
+            <Button small secondary onClick={leaveTable}>
+              Leave
+            </Button>
+          </PositionedUISlot>
         )}
 
         <PokerTableWrapper>
@@ -252,19 +246,21 @@ const Play = () => {
           )}
         </PokerTableWrapper>
 
-        {/* ALWAYS RENDER GameUI WHEN AT A TABLE TO PREVENT HIDDEN BUTTON deadlocks */}
-        {currentTable && (
-          <GameUI
-            currentTable={currentTable}
-            seatId={seatId}
-            bet={bet}
-            setBet={setBet}
-            raise={raise}
-            standUp={standUp}
-            fold={fold}
-            check={check}
-            call={call}
-          />
+        {/* Clean Fixed Bottom Wrapper for Controls */}
+        {currentTable && seatId !== null && seatId !== undefined && (
+          <div style={{ position: 'fixed', bottom: '15px', left: '0', width: '100vw', zIndex: 99999, display: 'flex', justifyContent: 'center', pointerEvents: 'auto' }}>
+            <GameUI
+              currentTable={currentTable}
+              seatId={seatId}
+              bet={bet}
+              setBet={setBet}
+              raise={raise}
+              standUp={standUp}
+              fold={fold}
+              check={check}
+              call={call}
+            />
+          </div>
         )}
       </Container>
     </>
