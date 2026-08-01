@@ -28,18 +28,21 @@ import './Seat.scss'
 export const Seat = ({ currentTable, seatNumber, sitDown }) => {
   const { chipsAmount } = useContext(globalContext)
   const { standUp, seatId, rebuy } = useContext(gameContext)
-   
 
-  //const seat = currentTable.seats[seatNumber]
-  const seat = currentTable?.seats?.[seatNumber];
-  const maxBuyin = currentTable.limit
-  const minBuyIn = currentTable.minBet * 2 * 10
+  // Safely resolve the seat object (supports both 1-based and 0-based indexing)
+  const seat =
+    currentTable?.seats?.[seatNumber] ||
+    currentTable?.seats?.[seatNumber - 1];
+
+  const maxBuyin = currentTable?.limit || 100000;
+  const minBuyIn = (currentTable?.minBet || 1000) * 2 * 10;
 
   useEffect(() => {
-    //console.log(currentTable, seatId, seatNumber, currentTable.seats[seatNumber])
-    console.log(currentTable, seatId, seatNumber, currentTable?.seats?.[seatNumber])
+    if (currentTable) {
+      console.log(`Seat ${seatNumber} Data:`, seat);
+    }
     // eslint-disable-next-line
-  }, [currentTable])
+  }, [currentTable, seatNumber])
 
   const gameActions = {
     CS_CALL: {
@@ -60,16 +63,25 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
     },
   }
 
+  // Robust Player Name Extractor (prevents undefined crashes)
+  const getPlayerName = () => {
+    if (!seat) return "Empty Seat";
+    if (seat.player?.name) return seat.player.name;
+    if (seat.player?.playerName) return seat.player.playerName;
+    if (seat.playerName) return seat.playerName;
+    if (seat.name) return seat.name;
+    if (seat.player?.address) return convertOmittedAddress(seat.player.address);
+    return "Player";
+  };
+
   return (
     <StyledSeat>
       {!seat ? (
-        <>
-          <EmptySeat>
-            <div className="empty-set-wrapper">
-              <Markdown><span className="empty-seat">Empty Seat</span></Markdown>
-            </div>
-          </EmptySeat>
-        </>
+        <EmptySeat onClick={() => sitDown && sitDown(seatNumber)}>
+          <div className="empty-set-wrapper" style={{ cursor: 'pointer' }}>
+            <Markdown><span className="empty-seat">Sit Here</span></Markdown>
+          </div>
+        </EmptySeat>
       ) : (
         <PositionedUISlot
           style={{
@@ -79,20 +91,27 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
             alignItems: 'center',
           }}
         >
+          {/* Bet Pill and Last Action Display */}
           <PositionedUISlot
             top="-7.5rem"
             left="-75px"
             origin="top center"
             style={{ minWidth: '150px', zIndex: '55' }}
           >
-            <ChipsAmountPill chipsAmount={seat.bet} />
-            {!currentTable.handOver && seat.lastAction && (
-              <LastAction bgColor={gameActions[seat.lastAction]['bgColor']}>{gameActions[seat.lastAction]['text']}</LastAction>
+            {seat.bet > 0 && <ChipsAmountPill chipsAmount={seat.bet} />}
+            {!currentTable.handOver && seat.lastAction && gameActions[seat.lastAction] && (
+              <LastAction bgColor={gameActions[seat.lastAction]['bgColor']}>
+                {gameActions[seat.lastAction]['text']}
+              </LastAction>
             )}
           </PositionedUISlot>
+
+          {/* Seat Circle */}
           <PositionedUISlot>
             <OccupiedSeat seatNumber={seatNumber} hasTurn={seat.turn} />
           </PositionedUISlot>
+
+          {/* Hand Cards Display */}
           <PositionedUISlot
             left="4vh"
             style={{
@@ -117,6 +136,7 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
             </Hand>
           </PositionedUISlot>
 
+          {/* Dealer Button */}
           {currentTable.button === seatNumber && (
             <PositionedUISlot
               top="-85px"
@@ -128,6 +148,7 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
             </PositionedUISlot>
           )}
 
+          {/* Big Blind Button */}
           {currentTable.bigBlind === seatNumber && (
             <PositionedUISlot
               top="-55px"
@@ -139,6 +160,7 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
             </PositionedUISlot>
           )}
 
+          {/* Small Blind Button */}
           {currentTable.smallBlind === seatNumber && (
             <PositionedUISlot            
               top="-55px"
@@ -150,37 +172,25 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
             </PositionedUISlot>
           )}
 
+          {/* Player Name Tag & Stack Count */}
           <PositionedUISlot
             top="6vh"
             style={{ minWidth: '150px', zIndex: '55' }}
             origin="bottom center"
           >
-            <p className="seat-name">{seat.player.name}</p>
-            {seat.stack && (
-              <p className="seat-stack">
-                {new Intl.NumberFormat(document.documentElement.lang).format(
-                  seat.stack,
-                )}
+            <p className="seat-name" style={{ color: 'white', fontWeight: 'bold', margin: '0' }}>
+              {getPlayerName()}
+            </p>
+            {seat.stack !== undefined && seat.stack !== null && (
+              <p className="seat-stack" style={{ color: '#21a68e', margin: '0' }}>
+                {new Intl.NumberFormat(document.documentElement.lang || 'en-US').format(seat.stack)}
               </p>
             )}
-
-            {/* <NameTag>
-              <ColoredText primary textAlign="center">
-                {convertOmittedAddress(seat.player.name)}
-                <br />
-                {seat.stack && (
-                  <ColoredText secondary>
-                    <PokerChip width="15" height="15" />{' '}
-                    {new Intl.NumberFormat(
-                      document.documentElement.lang,
-                    ).format(seat.stack)}
-                  </ColoredText>
-                )}
-              </ColoredText>
-            </NameTag> */}
           </PositionedUISlot>
         </PositionedUISlot>
       )}
     </StyledSeat>
   )
 }
+
+export default Seat
