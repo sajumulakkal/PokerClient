@@ -1,5 +1,4 @@
-import React, { useContext } from 'react'
- 
+ import React from 'react'
 import Button from '../buttons/Button'
 import { BetSlider } from './Betslider/BetSlider'
 import { UIWrapper } from './UIWrapper'
@@ -16,7 +15,20 @@ export const GameUI = ({
   check,
   call,
 }) => {
-   
+  // 1. Safely resolve the active seat object (handles both 1-based and 0-based seat indexing)
+  const currentSeat =
+    currentTable?.seats?.[seatId] ||
+    currentTable?.seats?.[seatId - 1] ||
+    {};
+
+  // 2. Extract bets safely with fallbacks
+  const currentBetOnTable = currentTable?.callAmount || 0;
+  const myCurrentBet = currentSeat?.bet || 0;
+
+  // 3. Determine button states
+  const isCheckDisabled = currentBetOnTable !== myCurrentBet && currentBetOnTable > 0;
+  const isCallDisabled = currentBetOnTable === 0 || myCurrentBet >= currentBetOnTable;
+  const callDifference = currentBetOnTable > myCurrentBet ? currentBetOnTable - myCurrentBet : 0;
 
   return (
     <UIWrapper style={{ display: 'flex' }}>
@@ -37,10 +49,7 @@ export const GameUI = ({
               <Button
                 small
                 secondary
-                disabled={
-                  currentTable.callAmount !== currentTable.seats[seatId].bet &&
-                  currentTable.callAmount > 0
-                }
+                disabled={isCheckDisabled}
                 onClick={check}
                 style={{ minHeight: '100%' }}
               >
@@ -50,18 +59,11 @@ export const GameUI = ({
             <Col sm={4}>
               <Button
                 small
-                disabled={
-                  currentTable.callAmount === 0 ||
-                  currentTable.seats[seatId].bet >= currentTable.callAmount
-                }
+                disabled={isCallDisabled}
                 onClick={call}
+                style={{ minHeight: '100%' }}
               >
-                Call{' '}
-                {/* {currentTable.callAmount &&
-                currentTable.seats[seatId].bet < currentTable.callAmount &&
-                currentTable.callAmount <= currentTable.seats[seatId].stack
-                  ? currentTable.callAmount - currentTable.seats[seatId].bet
-                  : ''} */}
+                Call {callDifference > 0 ? `$${callDifference}` : ''}
               </Button>
             </Col>
           </Row>
@@ -71,14 +73,14 @@ export const GameUI = ({
             <Col sm={4}>
               <Button
                 small
-                onClick={() => raise(bet + currentTable.seats[seatId].bet)}
+                onClick={() => raise(bet + myCurrentBet)}
                 style={{ minHeight: '100%' }}
               >
                 Raise
               </Button>
             </Col>
             <Col
-              sm={{span: 7, offset: 1}}
+              sm={{ span: 7, offset: 1 }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -89,16 +91,16 @@ export const GameUI = ({
                 backgroundOrigin: 'border-box',
                 padding: '0px 5px',
                 clipPath: `polygon(
-    0 5px,
-    5px 0,
-    calc(100% - 5px) 0,
-    100% 5px,
-    100% calc(100% - 5px),
-    calc(100% - 5px) 100%,
-    5px 100%,
-    0% calc(100% - 5px),
-    0% 5px
-  )`,
+                  0 5px,
+                  5px 0,
+                  calc(100% - 5px) 0,
+                  100% 5px,
+                  100% calc(100% - 5px),
+                  calc(100% - 5px) 100%,
+                  5px 100%,
+                  0% calc(100% - 5px),
+                  0% 5px
+                )`,
               }}
             >
               <BetSlider
@@ -112,18 +114,6 @@ export const GameUI = ({
           </Row>
         </Col>
       </Row>
-      {/* <Button
-        small
-        hidden
-        onClick={() =>
-          raise(
-            currentTable.seats[seatId].stack + currentTable.seats[seatId].bet,
-          )
-        }
-      >
-        All In (
-        {currentTable.seats[seatId].stack})
-      </Button> */}
     </UIWrapper>
   )
 }
