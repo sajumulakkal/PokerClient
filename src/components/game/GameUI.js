@@ -30,17 +30,53 @@ export const GameUI = ({
   const isCallDisabled = currentBetOnTable === 0 || myCurrentBet >= currentBetOnTable;
   const callDifference = currentBetOnTable > myCurrentBet ? currentBetOnTable - myCurrentBet : 0;
 
+  // 4. Click handlers with stopPropagation to ensure events fire
+  const handleFold = (e) => {
+    e.stopPropagation();
+    console.log("Fold button clicked");
+    if (fold) fold();
+  };
+
+  const handleCheck = (e) => {
+    e.stopPropagation();
+    console.log("Check button clicked");
+    if (check) check();
+  };
+
+  const handleCall = (e) => {
+    e.stopPropagation();
+    console.log("Call button clicked");
+    if (call) call();
+  };
+
+  const handleRaise = (e) => {
+    e.stopPropagation();
+    console.log("Raise button clicked:", bet + myCurrentBet);
+    if (raise) raise(bet + myCurrentBet);
+  };
+
   return (
-    <UIWrapper style={{ display: 'flex' }}>
-      <Row>
+    <UIWrapper style={{ 
+      display: 'flex', 
+      position: 'relative', 
+      zIndex: 99999, 
+      pointerEvents: 'auto' 
+    }}>
+      <Row style={{ width: '100%' }}>
         <Col sm={12} md={6}>
           <Row>
             <Col sm={4}>
               <Button
                 small
                 secondary
-                onClick={fold}
-                style={{ minHeight: '100%' }}
+                onClick={handleFold}
+                style={{ 
+                  minHeight: '100%', 
+                  cursor: 'pointer', 
+                  pointerEvents: 'auto',
+                  position: 'relative',
+                  zIndex: 100000 
+                }}
               >
                 Fold
               </Button>
@@ -50,8 +86,14 @@ export const GameUI = ({
                 small
                 secondary
                 disabled={isCheckDisabled}
-                onClick={check}
-                style={{ minHeight: '100%' }}
+                onClick={handleCheck}
+                style={{ 
+                  minHeight: '100%', 
+                  cursor: isCheckDisabled ? 'not-allowed' : 'pointer', 
+                  pointerEvents: 'auto',
+                  position: 'relative',
+                  zIndex: 100000 
+                }}
               >
                 Check
               </Button>
@@ -60,8 +102,14 @@ export const GameUI = ({
               <Button
                 small
                 disabled={isCallDisabled}
-                onClick={call}
-                style={{ minHeight: '100%' }}
+                onClick={handleCall}
+                style={{ 
+                  minHeight: '100%', 
+                  cursor: isCallDisabled ? 'not-allowed' : 'pointer', 
+                  pointerEvents: 'auto',
+                  position: 'relative',
+                  zIndex: 100000 
+                }}
               >
                 Call {callDifference > 0 ? `$${callDifference}` : ''}
               </Button>
@@ -73,8 +121,14 @@ export const GameUI = ({
             <Col sm={4}>
               <Button
                 small
-                onClick={() => raise(bet + myCurrentBet)}
-                style={{ minHeight: '100%' }}
+                onClick={handleRaise}
+                style={{ 
+                  minHeight: '100%', 
+                  cursor: 'pointer', 
+                  pointerEvents: 'auto',
+                  position: 'relative',
+                  zIndex: 100000 
+                }}
               >
                 Raise
               </Button>
