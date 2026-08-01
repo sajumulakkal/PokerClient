@@ -50,10 +50,8 @@ const Play = () => {
     }
 
     if (!walletAddress) {
-      // If no wallet address exists in context, trigger the modal registration form
       setShowRegistrationModal(true);
     } else {
-      // If address already exists, join table 1 directly
       console.log("Attempting to join table 1 with wallet:", walletAddress);
       joinTable(1);
     }
@@ -83,11 +81,9 @@ const Play = () => {
 
       console.log('Player successfully registered in MongoDB:', data);
 
-      // Save into global context so the rest of the app recognizes it
       setWalletAddress(inputAddress.trim());
       setShowRegistrationModal(false);
 
-      // Now join the table
       joinTable(1);
     } catch (error) {
       console.error('Error saving player:', error);
@@ -97,7 +93,7 @@ const Play = () => {
     }
   };
 
-  // 3. Update bet defaults smoothly when table state changes
+  // 3. Smoothly calculate initial bet when currentTable changes
   useEffect(() => {
     if (currentTable) {
       if (currentTable.callAmount > currentTable.minBet) {
@@ -110,28 +106,21 @@ const Play = () => {
     }
   }, [currentTable]);
 
-  // 4. Robust turn verification function
-  const isPlayerTurn = () => {
-    if (!currentTable || seatId === null || seatId === undefined) return false;
-    
-    // Check both current index and 1-based offset index
-    const targetSeat = currentTable.seats?.[seatId] || currentTable.seats?.[seatId - 1];
-    if (targetSeat && targetSeat.turn) return true;
-
-    // Fallback: Check if activeSeat or actionTo matches seatId
-    return (
-      currentTable.actionTo === seatId || 
-      currentTable.actionTo === (seatId - 1) ||
-      currentTable.activeSeat === seatId ||
-      currentTable.activeSeat === (seatId - 1)
-    );
-  };
+  // Debug logger to trace state changes in browser console
+  useEffect(() => {
+    if (currentTable) {
+      console.log("=== TABLE DEBUG LOG ===");
+      console.log("My Seat ID:", seatId);
+      console.log("Active Turn (actionTo / activeSeat):", currentTable.actionTo, currentTable.activeSeat);
+      console.log("Seats Array:", currentTable.seats);
+    }
+  }, [currentTable, seatId]);
 
   return (
     <>
       <RotateDevicePrompt />
       
-      {/* Registration Modal Overlay if player info is missing */}
+      {/* Registration Modal Overlay */}
       {showRegistrationModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
@@ -184,7 +173,7 @@ const Play = () => {
         }}
         className="play-area"
       >
-        {/* Fallback indicator if table data hasn't arrived yet */}
+        {/* Fallback indicator */}
         {!currentTable && !showRegistrationModal && (
           <div style={{ position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)', color: 'yellow', zIndex: 100, textAlign: 'center' }}>
             <h3>Connecting to Table 1... Waiting for server response.</h3>
@@ -263,8 +252,8 @@ const Play = () => {
           )}
         </PokerTableWrapper>
 
-        {/* Render GameUI whenever player is seated and it is their turn */}
-        {currentTable && seatId !== null && seatId !== undefined && isPlayerTurn() && (
+        {/* ALWAYS RENDER GameUI WHEN AT A TABLE TO PREVENT HIDDEN BUTTON deadlocks */}
+        {currentTable && (
           <GameUI
             currentTable={currentTable}
             seatId={seatId}
