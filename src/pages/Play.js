@@ -70,7 +70,6 @@ const Play = () => {
 
     setIsSubmitting(true);
     try {
-      //const response = await fetch('https://sparkling-gecko-148372.netlify.app/api/players', {
       const response = await fetch('https://pokerserver-production-b6bc.up.railway.app/api/players', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -107,6 +106,21 @@ const Play = () => {
         : setBet(currentTable.minBet)
     }
   }, [currentTable])
+
+  // Check if it is currently this seated player's turn (handles 0-index vs 1-index edge cases)
+  const isPlayerTurn = () => {
+    if (!currentTable || seatId === null || seatId === undefined) return false;
+    
+    const targetSeat = currentTable.seats?.[seatId] || currentTable.seats?.[seatId - 1];
+    if (targetSeat && targetSeat.turn) return true;
+
+    // Fallback: Check if actionTo matches seatId
+    return (
+      currentTable.actionTo === seatId || 
+      currentTable.actionTo === (seatId - 1) ||
+      currentTable.activeSeat === seatId
+    );
+  };
 
   return (
     <>
@@ -243,21 +257,20 @@ const Play = () => {
           )}
         </PokerTableWrapper>
 
-        {currentTable &&
-          currentTable.seats?.[seatId] &&
-          currentTable.seats[seatId].turn && (
-            <GameUI
-              currentTable={currentTable}
-              seatId={seatId}
-              bet={bet}
-              setBet={setBet}
-              raise={raise}
-              standUp={standUp}
-              fold={fold}
-              check={check}
-              call={call}
-            />
-          )}
+        {/* Render GameUI if table exists and it's the current player's turn */}
+        {currentTable && seatId !== null && seatId !== undefined && isPlayerTurn() && (
+          <GameUI
+            currentTable={currentTable}
+            seatId={seatId}
+            bet={bet}
+            setBet={setBet}
+            raise={raise}
+            standUp={standUp}
+            fold={fold}
+            check={check}
+            call={call}
+          />
+        )}
       </Container>
     </>
   )
