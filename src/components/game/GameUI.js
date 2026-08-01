@@ -1,4 +1,4 @@
- import React from 'react'
+import React from 'react'
 import Button from '../buttons/Button'
 import { BetSlider } from './Betslider/BetSlider'
 import { UIWrapper } from './UIWrapper'
@@ -15,53 +15,22 @@ export const GameUI = ({
   check,
   call,
 }) => {
-  // 1. Safely resolve the active seat object (handles both 1-based and 0-based seat indexing)
+  // Safely get current seat
   const currentSeat =
     currentTable?.seats?.[seatId] ||
     currentTable?.seats?.[seatId - 1] ||
     {};
 
-  // 2. Extract bets safely with fallbacks
   const currentBetOnTable = currentTable?.callAmount || 0;
   const myCurrentBet = currentSeat?.bet || 0;
 
-  // 3. Determine button states
-  const isCheckDisabled = currentBetOnTable !== myCurrentBet && currentBetOnTable > 0;
+  // Simple disabled checks
+  const isCheckDisabled = currentBetOnTable > 0 && currentBetOnTable !== myCurrentBet;
   const isCallDisabled = currentBetOnTable === 0 || myCurrentBet >= currentBetOnTable;
   const callDifference = currentBetOnTable > myCurrentBet ? currentBetOnTable - myCurrentBet : 0;
 
-  // 4. Click handlers with stopPropagation to ensure events fire
-  const handleFold = (e) => {
-    e.stopPropagation();
-    console.log("Fold button clicked");
-    if (fold) fold();
-  };
-
-  const handleCheck = (e) => {
-    e.stopPropagation();
-    console.log("Check button clicked");
-    if (check) check();
-  };
-
-  const handleCall = (e) => {
-    e.stopPropagation();
-    console.log("Call button clicked");
-    if (call) call();
-  };
-
-  const handleRaise = (e) => {
-    e.stopPropagation();
-    console.log("Raise button clicked:", bet + myCurrentBet);
-    if (raise) raise(bet + myCurrentBet);
-  };
-
   return (
-    <UIWrapper style={{ 
-      display: 'flex', 
-      position: 'relative', 
-      zIndex: 99999, 
-      pointerEvents: 'auto' 
-    }}>
+    <UIWrapper style={{ display: 'flex', width: '100%', maxWidth: '900px', margin: '0 auto' }}>
       <Row style={{ width: '100%' }}>
         <Col sm={12} md={6}>
           <Row>
@@ -69,14 +38,8 @@ export const GameUI = ({
               <Button
                 small
                 secondary
-                onClick={handleFold}
-                style={{ 
-                  minHeight: '100%', 
-                  cursor: 'pointer', 
-                  pointerEvents: 'auto',
-                  position: 'relative',
-                  zIndex: 100000 
-                }}
+                onClick={fold}
+                style={{ minHeight: '100%', width: '100%' }}
               >
                 Fold
               </Button>
@@ -86,14 +49,8 @@ export const GameUI = ({
                 small
                 secondary
                 disabled={isCheckDisabled}
-                onClick={handleCheck}
-                style={{ 
-                  minHeight: '100%', 
-                  cursor: isCheckDisabled ? 'not-allowed' : 'pointer', 
-                  pointerEvents: 'auto',
-                  position: 'relative',
-                  zIndex: 100000 
-                }}
+                onClick={check}
+                style={{ minHeight: '100%', width: '100%' }}
               >
                 Check
               </Button>
@@ -102,14 +59,8 @@ export const GameUI = ({
               <Button
                 small
                 disabled={isCallDisabled}
-                onClick={handleCall}
-                style={{ 
-                  minHeight: '100%', 
-                  cursor: isCallDisabled ? 'not-allowed' : 'pointer', 
-                  pointerEvents: 'auto',
-                  position: 'relative',
-                  zIndex: 100000 
-                }}
+                onClick={call}
+                style={{ minHeight: '100%', width: '100%' }}
               >
                 Call {callDifference > 0 ? `$${callDifference}` : ''}
               </Button>
@@ -121,14 +72,8 @@ export const GameUI = ({
             <Col sm={4}>
               <Button
                 small
-                onClick={handleRaise}
-                style={{ 
-                  minHeight: '100%', 
-                  cursor: 'pointer', 
-                  pointerEvents: 'auto',
-                  position: 'relative',
-                  zIndex: 100000 
-                }}
+                onClick={() => raise(bet + myCurrentBet)}
+                style={{ minHeight: '100%', width: '100%' }}
               >
                 Raise
               </Button>
@@ -142,19 +87,7 @@ export const GameUI = ({
                 border: '2px solid',
                 borderImage: 'linear-gradient(to bottom, #21a68e, #0d3733) 2',
                 backgroundImage: 'linear-gradient(to bottom, #187969, #081c1c)',
-                backgroundOrigin: 'border-box',
                 padding: '0px 5px',
-                clipPath: `polygon(
-                  0 5px,
-                  5px 0,
-                  calc(100% - 5px) 0,
-                  100% 5px,
-                  100% calc(100% - 5px),
-                  calc(100% - 5px) 100%,
-                  5px 100%,
-                  0% calc(100% - 5px),
-                  0% 5px
-                )`,
               }}
             >
               <BetSlider
