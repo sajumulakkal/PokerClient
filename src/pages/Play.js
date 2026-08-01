@@ -42,7 +42,18 @@ const Play = () => {
   const [inputAddress, setInputAddress] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // 1. Check socket connection and saved registration
+  // 1. Pre-fill saved values from localStorage on mount
+  useEffect(() => {
+    const savedName = localStorage.getItem('playerName');
+    const savedAddress = localStorage.getItem('walletAddress');
+    if (savedName) setPlayerName(savedName);
+    if (savedAddress) {
+      setInputAddress(savedAddress);
+      if (!walletAddress) setWalletAddress(savedAddress);
+    }
+  }, [walletAddress, setWalletAddress]);
+
+  // 2. Check socket connection and saved registration
   useEffect(() => {
     if (!socket) {
       navigate("/")
@@ -57,20 +68,29 @@ const Play = () => {
     // eslint-disable-next-line
   }, [socket, walletAddress, currentTable])
 
-  // 2. Register Player to MongoDB & Send Player Info to Socket Engine
+  // 3. Register Player to MongoDB & Send Player Info to Socket Engine
   const handleRegisterPlayer = async (e) => {
     e.preventDefault();
-    if (!playerName.trim() || !inputAddress.trim()) {
+    const cleanName = playerName.trim();
+    const cleanAddress = inputAddress.trim();
+
+    if (!cleanName || !cleanAddress) {
       alert("Please enter both Name and Wallet Address.");
       return;
     }
 
     setIsSubmitting(true);
     try {
+      // Store in context & localStorage immediately
+      setWalletAddress(cleanAddress);
+      localStorage.setItem('playerName', cleanName);
+      localStorage.setItem('walletAddress', cleanAddress);
+
+      // Save player to database via API
       const response = await fetch('https://pokerserver-production-b6bc.up.railway.app/api/players', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: playerName.trim(), address: inputAddress.trim() })
+        body: JSON.stringify({ name: cleanName, address: cleanAddress })
       });
 
       const data = await response.json();
@@ -78,13 +98,19 @@ const Play = () => {
         throw new Error(data.message || 'Failed to save player');
       }
 
-      // Store in context & localStorage
-      setWalletAddress(inputAddress.trim());
-      localStorage.setItem('playerName', playerName.trim());
       setShowRegistrationModal(false);
 
+      // Emit lobby info to register username on socket session before joining table
+      if (socket) {
+        socket.emit("CS_FETCH_LOBBY_INFO", {
+          walletAddress: cleanAddress,
+          socketId: socket.id,
+          username: cleanName
+        });
+      }
+
       // Pass player metadata when joining table room
-      joinTable(1, { name: playerName.trim(), address: inputAddress.trim() });
+      joinTable(1, { name: cleanName, address: cleanAddress });
     } catch (error) {
       console.error('Error saving player:', error);
       alert('Error saving player to database.');
@@ -109,7 +135,11 @@ const Play = () => {
   const getActiveSeatId = () => {
     if (seatId !== null && seatId !== undefined) return seatId;
     if (currentTable && currentTable.seats) {
-      const foundIndex = currentTable.seats.findIndex(
+      const seatsArray = Array.isArray(currentTable.seats) 
+        ? currentTable.seats 
+        : Object.values(currentTable.seats);
+
+      const foundIndex = seatsArray.findIndex(
         (s) => s && (s.socketId === socket?.id || s.id === socket?.id || s.player?.address === walletAddress)
       );
       if (foundIndex !== -1) return foundIndex + 1;
@@ -122,8 +152,9 @@ const Play = () => {
   // Custom sitDown handler that binds player details
   const handleSitDown = (seatNum) => {
     const storedName = playerName || localStorage.getItem('playerName') || 'Player';
+    const storedAddress = walletAddress || localStorage.getItem('walletAddress') || inputAddress;
     if (sitDown) {
-      sitDown(seatNum, { name: storedName, address: walletAddress });
+      sitDown(seatNum, { name: storedName, address: storedAddress });
     }
   };
 
