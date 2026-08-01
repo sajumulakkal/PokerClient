@@ -66,17 +66,27 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
   // 2. Extract display name robustly
   const getPlayerName = () => {
     if (!seat) return "Empty Seat";
-    if (seat.player?.name) return seat.player.name;
-    if (seat.player?.playerName) return seat.player.playerName;
-    if (seat.playerName) return seat.playerName;
-    if (seat.name) return seat.name;
-    if (seat.player?.address) return convertOmittedAddress(seat.player.address);
 
-    // Local storage fallback for current user
+    // Check if this seat belongs to the current local player
     const localSavedName = localStorage.getItem('playerName');
-    if (localSavedName) return localSavedName;
+    const isMySeat = (seatId === seatNumber || seatId === (seatNumber - 1));
 
-    return "Player";
+    // Server-provided custom names (ignore default fallback "Player" if local name exists)
+    if (seat.player?.name && seat.player.name !== 'Player') return seat.player.name;
+    if (seat.player?.username) return seat.player.username;
+    if (seat.playerName) return seat.playerName;
+    if (seat.name && seat.name !== 'Player') return seat.name;
+
+    // Address fallback
+    if (seat.player?.address) return convertOmittedAddress(seat.player.address);
+    if (seat.address) return convertOmittedAddress(seat.address);
+
+    // Local storage override for current user seat
+    if (isMySeat && localSavedName) {
+      return localSavedName;
+    }
+
+    return seat.player?.name || localSavedName || "Player";
   };
 
   return (
