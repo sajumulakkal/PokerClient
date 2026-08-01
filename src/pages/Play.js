@@ -42,7 +42,7 @@ const Play = () => {
   const [inputAddress, setInputAddress] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // 1. Check socket and wallet address
+  // 1. Check socket connection and saved registration
   useEffect(() => {
     if (!socket) {
       navigate("/")
@@ -51,14 +51,13 @@ const Play = () => {
 
     if (!walletAddress) {
       setShowRegistrationModal(true);
-    } else {
-      console.log("Attempting to join table 1 with wallet:", walletAddress);
+    } else if (!currentTable) {
       joinTable(1);
     }
     // eslint-disable-next-line
-  }, [socket, walletAddress])
+  }, [socket, walletAddress, currentTable])
 
-  // 2. Register Player to MongoDB & Send Player Info to Table Context
+  // 2. Register Player to MongoDB & Send Player Info to Socket Engine
   const handleRegisterPlayer = async (e) => {
     e.preventDefault();
     if (!playerName.trim() || !inputAddress.trim()) {
@@ -79,13 +78,12 @@ const Play = () => {
         throw new Error(data.message || 'Failed to save player');
       }
 
-      console.log('Player registered successfully in MongoDB:', data);
-
-      // Save into global context
+      // Store in context & localStorage
       setWalletAddress(inputAddress.trim());
+      localStorage.setItem('playerName', playerName.trim());
       setShowRegistrationModal(false);
 
-      // Pass player payload when joining table so seat gets registered properly
+      // Pass player metadata when joining table room
       joinTable(1, { name: playerName.trim(), address: inputAddress.trim() });
     } catch (error) {
       console.error('Error saving player:', error);
@@ -95,7 +93,6 @@ const Play = () => {
     }
   };
 
-  // 3. Update bet defaults smoothly when table state changes
   useEffect(() => {
     if (currentTable) {
       if (currentTable.callAmount > currentTable.minBet) {
@@ -108,21 +105,27 @@ const Play = () => {
     }
   }, [currentTable]);
 
-  // Determine active seat index fallback
+  // Find active seat ID from state or socket match
   const getActiveSeatId = () => {
     if (seatId !== null && seatId !== undefined) return seatId;
-    
-    // Fallback: search seats array for socket or player match
     if (currentTable && currentTable.seats) {
       const foundIndex = currentTable.seats.findIndex(
-        (s) => s && (s.socketId === socket?.id || s.id === socket?.id)
+        (s) => s && (s.socketId === socket?.id || s.id === socket?.id || s.player?.address === walletAddress)
       );
-      if (foundIndex !== -1) return foundIndex + 1; // 1-based seat id
+      if (foundIndex !== -1) return foundIndex + 1;
     }
     return null;
   };
 
   const activeSeatId = getActiveSeatId();
+
+  // Custom sitDown handler that binds player details
+  const handleSitDown = (seatNum) => {
+    const storedName = playerName || localStorage.getItem('playerName') || 'Player';
+    if (sitDown) {
+      sitDown(seatNum, { name: storedName, address: walletAddress });
+    }
+  };
 
   return (
     <>
@@ -200,19 +203,19 @@ const Play = () => {
           {currentTable && (
             <>
               <PositionedUISlot top="-5%" left="0" scale="0.55" origin="top left">
-                <Seat seatNumber={1} currentTable={currentTable} sitDown={sitDown} />
+                <Seat seatNumber={1} currentTable={currentTable} sitDown={handleSitDown} />
               </PositionedUISlot>
               <PositionedUISlot top="-5%" right="2%" scale="0.55" origin="top right">
-                <Seat seatNumber={2} currentTable={currentTable} sitDown={sitDown} />
+                <Seat seatNumber={2} currentTable={currentTable} sitDown={handleSitDown} />
               </PositionedUISlot>
               <PositionedUISlot bottom="15%" right="2%" scale="0.55" origin="bottom right">
-                <Seat seatNumber={3} currentTable={currentTable} sitDown={sitDown} />
+                <Seat seatNumber={3} currentTable={currentTable} sitDown={handleSitDown} />
               </PositionedUISlot>
               <PositionedUISlot bottom="8%" scale="0.55" origin="bottom center">
-                <Seat seatNumber={4} currentTable={currentTable} sitDown={sitDown} />
+                <Seat seatNumber={4} currentTable={currentTable} sitDown={handleSitDown} />
               </PositionedUISlot>
               <PositionedUISlot bottom="15%" left="0" scale="0.55" origin="bottom left">
-                <Seat seatNumber={5} currentTable={currentTable} sitDown={sitDown} />
+                <Seat seatNumber={5} currentTable={currentTable} sitDown={handleSitDown} />
               </PositionedUISlot>
               <PositionedUISlot top="-25%" scale="0.55" origin="top center" style={{ zIndex: '1' }}>
                 <BrandingImage />
@@ -252,12 +255,11 @@ const Play = () => {
           )}
         </PokerTableWrapper>
 
-        {/* Clean Fixed Bottom Wrapper for Controls */}
-        {currentTable && activeSeatId !== null && activeSeatId !== undefined && (
+        {currentTable && (
           <div style={{ position: 'fixed', bottom: '15px', left: '0', width: '100vw', zIndex: 99999, display: 'flex', justifyContent: 'center', pointerEvents: 'auto' }}>
             <GameUI
               currentTable={currentTable}
-              seatId={activeSeatId}
+              seatId={activeSeatId || seatId}
               bet={bet}
               setBet={setBet}
               raise={raise}
