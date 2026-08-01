@@ -29,41 +29,37 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
   const { chipsAmount } = useContext(globalContext)
   const { standUp, seatId, rebuy } = useContext(gameContext)
 
-  // Safely resolve the seat object (supports both 1-based and 0-based indexing)
-  const seat =
-    currentTable?.seats?.[seatNumber] ||
-    currentTable?.seats?.[seatNumber - 1];
+  // 1. Resolve seat object safely (handles direct index, 1-based offset, or matching seat object properties)
+  const resolveSeat = () => {
+    if (!currentTable?.seats) return null;
 
-  const maxBuyin = currentTable?.limit || 100000;
-  const minBuyIn = (currentTable?.minBet || 1000) * 2 * 10;
+    // Check direct array index (1-based vs 0-based)
+    if (currentTable.seats[seatNumber]) return currentTable.seats[seatNumber];
+    if (currentTable.seats[seatNumber - 1]) return currentTable.seats[seatNumber - 1];
+
+    // Search seats array for matching seat ID or seatNumber property
+    return currentTable.seats.find(
+      (s) => s && (s.seatNumber === seatNumber || s.id === seatNumber || s.seatId === seatNumber)
+    );
+  };
+
+  const seat = resolveSeat();
 
   useEffect(() => {
     if (currentTable) {
       console.log(`Seat ${seatNumber} Data:`, seat);
     }
     // eslint-disable-next-line
-  }, [currentTable, seatNumber])
+  }, [currentTable, seatNumber]);
 
   const gameActions = {
-    CS_CALL: {
-      text: 'Call',
-      bgColor: '#feaa33'
-    },
-    CS_FOLD: {
-      text: 'Fold',
-      bgColor: '#ff3332'
-    },
-    CS_CHECK: {
-      text: 'Check',
-      bgColor: '#48ff52'
-    },    
-    CS_RAISE: {
-      text: 'Raise',
-      bgColor: '#179ddc'
-    },
-  }
+    CS_CALL: { text: 'Call', bgColor: '#feaa33' },
+    CS_FOLD: { text: 'Fold', bgColor: '#ff3332' },
+    CS_CHECK: { text: 'Check', bgColor: '#48ff52' },    
+    CS_RAISE: { text: 'Raise', bgColor: '#179ddc' },
+  };
 
-  // Robust Player Name Extractor (prevents undefined crashes)
+  // 2. Extract display name robustly
   const getPlayerName = () => {
     if (!seat) return "Empty Seat";
     if (seat.player?.name) return seat.player.name;
@@ -71,6 +67,11 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
     if (seat.playerName) return seat.playerName;
     if (seat.name) return seat.name;
     if (seat.player?.address) return convertOmittedAddress(seat.player.address);
+
+    // Local storage fallback for current user
+    const localSavedName = localStorage.getItem('playerName');
+    if (localSavedName) return localSavedName;
+
     return "Player";
   };
 
@@ -106,12 +107,12 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
             )}
           </PositionedUISlot>
 
-          {/* Seat Circle */}
+          {/* Seat Graphic */}
           <PositionedUISlot>
             <OccupiedSeat seatNumber={seatNumber} hasTurn={seat.turn} />
           </PositionedUISlot>
 
-          {/* Hand Cards Display */}
+          {/* Hand Cards */}
           <PositionedUISlot
             left="4vh"
             style={{
@@ -178,14 +179,18 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
             style={{ minWidth: '150px', zIndex: '55' }}
             origin="bottom center"
           >
-            <p className="seat-name" style={{ color: 'white', fontWeight: 'bold', margin: '0' }}>
-              {getPlayerName()}
-            </p>
-            {seat.stack !== undefined && seat.stack !== null && (
-              <p className="seat-stack" style={{ color: '#21a68e', margin: '0' }}>
-                {new Intl.NumberFormat(document.documentElement.lang || 'en-US').format(seat.stack)}
-              </p>
-            )}
+            <NameTag>
+              <ColoredText primary textAlign="center" style={{ fontSize: '13px', fontWeight: 'bold' }}>
+                {getPlayerName()}
+                <br />
+                {seat.stack !== undefined && seat.stack !== null && (
+                  <ColoredText secondary style={{ fontSize: '12px', color: '#21a68e' }}>
+                    <PokerChip width="15" height="15" />{' '}
+                    {new Intl.NumberFormat(document.documentElement.lang || 'en-US').format(seat.stack)}
+                  </ColoredText>
+                )}
+              </ColoredText>
+            </NameTag>
           </PositionedUISlot>
         </PositionedUISlot>
       )}
