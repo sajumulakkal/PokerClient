@@ -1,4 +1,4 @@
- import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Container from '../components/layout/Container'
 import Button from '../components/buttons/Button'
@@ -52,12 +52,13 @@ const Play = () => {
     if (!walletAddress) {
       setShowRegistrationModal(true);
     } else {
+      console.log("Attempting to join table 1 with wallet:", walletAddress);
       joinTable(1);
     }
     // eslint-disable-next-line
   }, [socket, walletAddress])
 
-  // 2. Register Player to MongoDB
+  // 2. Register Player to MongoDB & Send Player Info to Table Context
   const handleRegisterPlayer = async (e) => {
     e.preventDefault();
     if (!playerName.trim() || !inputAddress.trim()) {
@@ -78,9 +79,14 @@ const Play = () => {
         throw new Error(data.message || 'Failed to save player');
       }
 
+      console.log('Player registered successfully in MongoDB:', data);
+
+      // Save into global context
       setWalletAddress(inputAddress.trim());
       setShowRegistrationModal(false);
-      joinTable(1);
+
+      // Pass player payload when joining table so seat gets registered properly
+      joinTable(1, { name: playerName.trim(), address: inputAddress.trim() });
     } catch (error) {
       console.error('Error saving player:', error);
       alert('Error saving player to database.');
@@ -89,7 +95,7 @@ const Play = () => {
     }
   };
 
-  // 3. Update bet defaults smoothly
+  // 3. Update bet defaults smoothly when table state changes
   useEffect(() => {
     if (currentTable) {
       if (currentTable.callAmount > currentTable.minBet) {
@@ -102,21 +108,21 @@ const Play = () => {
     }
   }, [currentTable]);
 
-  // Turn detection logic
-  const isMyTurn = () => {
-    if (!currentTable || seatId === null || seatId === undefined) return false;
+  // Determine active seat index fallback
+  const getActiveSeatId = () => {
+    if (seatId !== null && seatId !== undefined) return seatId;
     
-    // Check if the seat is marked active/turn
-    const currentSeat = currentTable.seats?.[seatId] || currentTable.seats?.[seatId - 1];
-    if (currentSeat && currentSeat.turn) return true;
-
-    return (
-      currentTable.actionTo === seatId ||
-      currentTable.actionTo === (seatId - 1) ||
-      currentTable.activeSeat === seatId ||
-      currentTable.activeSeat === (seatId - 1)
-    );
+    // Fallback: search seats array for socket or player match
+    if (currentTable && currentTable.seats) {
+      const foundIndex = currentTable.seats.findIndex(
+        (s) => s && (s.socketId === socket?.id || s.id === socket?.id)
+      );
+      if (foundIndex !== -1) return foundIndex + 1; // 1-based seat id
+    }
+    return null;
   };
+
+  const activeSeatId = getActiveSeatId();
 
   return (
     <>
@@ -247,11 +253,11 @@ const Play = () => {
         </PokerTableWrapper>
 
         {/* Clean Fixed Bottom Wrapper for Controls */}
-        {currentTable && seatId !== null && seatId !== undefined && (
+        {currentTable && activeSeatId !== null && activeSeatId !== undefined && (
           <div style={{ position: 'fixed', bottom: '15px', left: '0', width: '100vw', zIndex: 99999, display: 'flex', justifyContent: 'center', pointerEvents: 'auto' }}>
             <GameUI
               currentTable={currentTable}
-              seatId={seatId}
+              seatId={activeSeatId}
               bet={bet}
               setBet={setBet}
               raise={raise}
