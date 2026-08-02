@@ -1,4 +1,4 @@
- import React, { useContext, useEffect } from 'react'
+import React, { useContext, useEffect } from 'react'
 import Button from '../../buttons/Button'
 import modalContext from '../../../context/modal/modalContext'
 import globalContext from '../../../context/global/globalContext'
@@ -31,20 +31,23 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
   const { standUp, seatId, rebuy } = useContext(gameContext)
   const { socket } = useContext(socketContext)
 
-  // 1. Resolve seat object safely (handles both Objects and Arrays without crashing)
+  // 1. Resolve seat object STRICTLY for this seatNumber (NO seatNumber - 1 fallback!)
   const resolveSeat = () => {
     if (!currentTable?.seats) return null;
 
-    if (currentTable.seats[seatNumber]) return currentTable.seats[seatNumber];
-    if (currentTable.seats[seatNumber - 1]) return currentTable.seats[seatNumber - 1];
+    // Check direct key match (1-indexed object)
+    if (currentTable.seats[seatNumber] !== undefined) {
+      return currentTable.seats[seatNumber];
+    }
 
+    // Array / object search strictly by matching numerical seat ID
     const seatsList = Array.isArray(currentTable.seats)
       ? currentTable.seats
       : Object.values(currentTable.seats);
 
     return seatsList.find(
-      (s) => s && (s.seatNumber === seatNumber || s.id === seatNumber || s.seatId === seatNumber)
-    );
+      (s) => s && (Number(s.seatNumber) === Number(seatNumber) || Number(s.id) === Number(seatNumber) || Number(s.seatId) === Number(seatNumber))
+    ) || null;
   };
 
   const seat = resolveSeat();
@@ -63,13 +66,11 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
     CS_RAISE: { text: 'Raise', bgColor: '#179ddc' },
   };
 
-  // 2. STRICT single seat match logic
-  // Compare numerical seatId directly or active socket match for single seat
+  // 2. Strict single seat match logic
   const isMySeat = Boolean(
     seat && (
       (seatId !== null && seatId !== undefined && Number(seatNumber) === Number(seatId)) ||
-      (socket?.id && (seat.socketId === socket.id || seat.player?.socketId === socket.id) && 
-       (seatId === null || seatId === undefined || Number(seatNumber) === Number(seatId)))
+      (socket?.id && (seat.socketId === socket.id || seat.player?.socketId === socket.id))
     )
   );
 
