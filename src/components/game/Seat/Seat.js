@@ -65,57 +65,34 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
     CS_RAISE: { text: 'Raise', bgColor: '#179ddc' },
   };
 
-  // 2. Determine if this seat belongs to the local user
+  // 2. Determine if this seat STRICTLY belongs to the active local user
   const isMySeat = Boolean(
-    seat && (
-      seatId === seatNumber ||
-      seatId === (seatNumber - 1) ||
-      (socket?.id && (seat.socketId === socket.id || seat.player?.socketId === socket.id)) ||
-      (walletAddress && (seat.player?.address === walletAddress || seat.address === walletAddress))
+    seat && seat.player && (
+      (socket?.id && (seat.socketId === socket.id || seat.player.socketId === socket.id)) ||
+      (walletAddress && (seat.player.address === walletAddress || seat.address === walletAddress || seat.player.id === walletAddress))
     )
   );
 
-  // 3. Robustly extract display name for ALL players (cross-referencing currentTable.players)
+  // 3. Extract display name robustly per seat
   const getPlayerName = () => {
     if (!seat) return "Empty Seat";
 
-    // A. Direct seat object name checks
+    // Direct server-provided seat properties
     if (seat.player?.name && seat.player.name !== 'Player') return seat.player.name;
     if (seat.player?.username) return seat.player.username;
-    if (seat.playerName) return seat.playerName;
+    if (seat.playerName && seat.playerName !== 'Player') return seat.playerName;
     if (seat.name && seat.name !== 'Player') return seat.name;
 
-    // B. Search currentTable.players array for matching socketId or address
-    if (currentTable?.players) {
-      const playersList = Array.isArray(currentTable.players)
-        ? currentTable.players
-        : Object.values(currentTable.players);
+    // Address abbreviation fallback
+    if (seat.player?.address) return convertOmittedAddress(seat.player.address);
+    if (seat.address) return convertOmittedAddress(seat.address);
 
-      const matchedPlayer = playersList.find((p) => 
-        p && (
-          (seat.socketId && p.socketId === seat.socketId) ||
-          (seat.player?.socketId && p.socketId === seat.player.socketId) ||
-          (seat.player?.id && p.id === seat.player.id) ||
-          (seat.player?.address && p.id === seat.player.address)
-        )
-      );
-
-      if (matchedPlayer?.name && matchedPlayer.name !== 'Player') {
-        return matchedPlayer.name;
-      }
-    }
-
-    // C. Fallback to local storage for current user seat
+    // ONLY use localStorage for YOUR actual seat if server name is missing
     if (isMySeat) {
       const localSavedName = localStorage.getItem('playerName');
       if (localSavedName) return localSavedName;
     }
 
-    // D. Address abbreviation fallback
-    if (seat.player?.address) return convertOmittedAddress(seat.player.address);
-    if (seat.address) return convertOmittedAddress(seat.address);
-
-    // E. Dynamic fallback by Seat number if name is missing (e.g. "Player 1", "Player 2")
     return seat.player?.name || `Player ${seatNumber}`;
   };
 
