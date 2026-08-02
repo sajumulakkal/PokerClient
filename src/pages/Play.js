@@ -56,22 +56,38 @@ const Play = () => {
     }
   }, [walletAddress, setWalletAddress]);
 
-  // 2. Check socket connection and saved registration
+  // 2. Check socket connection and saved registration before joining
   useEffect(() => {
     if (!socket) {
-      navigate("/")
+      navigate("/");
       return;
     }
 
-    if (!walletAddress) {
+    const savedName = playerName || localStorage.getItem('playerName');
+    const savedAddress = walletAddress || localStorage.getItem('walletAddress');
+
+    // ONLY show modal if registration details are completely missing
+    if (!savedAddress || !savedName) {
       setShowRegistrationModal(true);
-    } else if (!currentTable && !hasJoinedRef.current) {
-      hasJoinedRef.current = true;
-      const currentName = playerName || localStorage.getItem('playerName') || 'Player';
-      joinTable(1, { name: currentName, address: walletAddress });
+      return;
     }
-    // eslint-disable-next-line
-  }, [socket, walletAddress, currentTable]);
+
+    // Emit joinTable ONLY ONCE when valid credentials exist
+    if (!currentTable && !hasJoinedRef.current) {
+      hasJoinedRef.current = true;
+      setShowRegistrationModal(false);
+
+      // Register session info on server socket
+      socket.emit("CS_FETCH_LOBBY_INFO", {
+        walletAddress: savedAddress,
+        socketId: socket.id,
+        username: savedName
+      });
+
+      // Join table with explicit player details
+      joinTable(1, { name: savedName, address: savedAddress });
+    }
+  }, [socket, walletAddress, playerName, currentTable, navigate, joinTable]);
 
   // 3. Register Player to MongoDB & Send Player Info to Socket Engine
   const handleRegisterPlayer = async (e) => {
