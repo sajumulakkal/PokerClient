@@ -31,7 +31,7 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
   const { standUp, seatId, rebuy } = useContext(gameContext)
   const { socket } = useContext(socketContext)
 
-  // 1. Resolve seat object safely (handles both Objects and Arrays without crashing)
+  // 1. Resolve seat object safely
   const resolveSeat = () => {
     if (!currentTable?.seats) return null;
 
@@ -63,13 +63,13 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
     CS_RAISE: { text: 'Raise', bgColor: '#179ddc' },
   };
 
-  // 2. STRICT "Is My Seat" check: Only match current Socket ID or exact assigned seatId
+  // 2. STRICT "Is My Seat" check (No -1 offsets)
   const isMySeat = Boolean(
     seat && (
-      // Socket match is the most precise single-connection identifier
+      // Strict match by socketId
       (socket?.id && (seat.socketId === socket.id || seat.player?.socketId === socket.id)) ||
-      // Or strict numerical seatId match from game context
-      (seatId !== null && seatId !== undefined && (seatNumber === seatId || (seatNumber - 1) === seatId))
+      // Strict match by exact seatId from context
+      (seatId !== null && seatId !== undefined && Number(seatNumber) === Number(seatId))
     )
   );
 
