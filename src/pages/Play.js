@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Container from '../components/layout/Container'
 import Button from '../components/buttons/Button'
@@ -41,6 +41,9 @@ const Play = () => {
   const [playerName, setPlayerName] = useState('')
   const [inputAddress, setInputAddress] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Guard against duplicate joinTable calls on mount/re-render
+  const hasJoinedRef = useRef(false);
 
   // 1. Pre-fill saved values from localStorage on mount
   useEffect(() => {
@@ -62,11 +65,13 @@ const Play = () => {
 
     if (!walletAddress) {
       setShowRegistrationModal(true);
-    } else if (!currentTable) {
-      joinTable(1);
+    } else if (!currentTable && !hasJoinedRef.current) {
+      hasJoinedRef.current = true;
+      const currentName = playerName || localStorage.getItem('playerName') || 'Player';
+      joinTable(1, { name: currentName, address: walletAddress });
     }
     // eslint-disable-next-line
-  }, [socket, walletAddress, currentTable])
+  }, [socket, walletAddress, currentTable]);
 
   // 3. Register Player to MongoDB & Send Player Info to Socket Engine
   const handleRegisterPlayer = async (e) => {
@@ -110,6 +115,7 @@ const Play = () => {
       }
 
       // Pass player metadata when joining table room
+      hasJoinedRef.current = true;
       joinTable(1, { name: cleanName, address: cleanAddress });
     } catch (error) {
       console.error('Error saving player:', error);
