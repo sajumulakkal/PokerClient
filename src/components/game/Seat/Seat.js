@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from 'react'
+ import React, { useContext, useEffect } from 'react'
 import Button from '../../buttons/Button'
 import modalContext from '../../../context/modal/modalContext'
 import globalContext from '../../../context/global/globalContext'
@@ -31,7 +31,7 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
   const { standUp, seatId, rebuy } = useContext(gameContext)
   const { socket } = useContext(socketContext)
 
-  // 1. Resolve seat object safely
+  // 1. Resolve seat object safely (handles both Objects and Arrays without crashing)
   const resolveSeat = () => {
     if (!currentTable?.seats) return null;
 
@@ -63,13 +63,13 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
     CS_RAISE: { text: 'Raise', bgColor: '#179ddc' },
   };
 
-  // 2. STRICT "Is My Seat" check (No -1 offsets)
+  // 2. STRICT single seat match logic
+  // Compare numerical seatId directly or active socket match for single seat
   const isMySeat = Boolean(
     seat && (
-      // Strict match by socketId
-      (socket?.id && (seat.socketId === socket.id || seat.player?.socketId === socket.id)) ||
-      // Strict match by exact seatId from context
-      (seatId !== null && seatId !== undefined && Number(seatNumber) === Number(seatId))
+      (seatId !== null && seatId !== undefined && Number(seatNumber) === Number(seatId)) ||
+      (socket?.id && (seat.socketId === socket.id || seat.player?.socketId === socket.id) && 
+       (seatId === null || seatId === undefined || Number(seatNumber) === Number(seatId)))
     )
   );
 
@@ -87,7 +87,7 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
     if (seat.player?.address) return convertOmittedAddress(seat.player.address);
     if (seat.address) return convertOmittedAddress(seat.address);
 
-    // ONLY use localStorage for YOUR single verified seat
+    // Use local storage name only if this is strictly your active seat
     if (isMySeat) {
       const localSavedName = localStorage.getItem('playerName');
       if (localSavedName) return localSavedName;
