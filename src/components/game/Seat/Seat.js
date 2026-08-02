@@ -31,15 +31,13 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
   const { standUp, seatId, rebuy } = useContext(gameContext)
   const { socket } = useContext(socketContext)
 
-  // 1. Resolve seat object safely (handles both Objects and Arrays without crashing .find())
+  // 1. Resolve seat object safely (handles both Objects and Arrays without crashing)
   const resolveSeat = () => {
     if (!currentTable?.seats) return null;
 
-    // Direct key access check (handles 1-based or 0-based keying)
     if (currentTable.seats[seatNumber]) return currentTable.seats[seatNumber];
     if (currentTable.seats[seatNumber - 1]) return currentTable.seats[seatNumber - 1];
 
-    // Safely convert object/array values into an iterable array before searching
     const seatsList = Array.isArray(currentTable.seats)
       ? currentTable.seats
       : Object.values(currentTable.seats);
@@ -65,11 +63,13 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
     CS_RAISE: { text: 'Raise', bgColor: '#179ddc' },
   };
 
-  // 2. Determine if this seat STRICTLY belongs to the active local user
+  // 2. STRICT "Is My Seat" check: Only match current Socket ID or exact assigned seatId
   const isMySeat = Boolean(
-    seat && seat.player && (
-      (socket?.id && (seat.socketId === socket.id || seat.player.socketId === socket.id)) ||
-      (walletAddress && (seat.player.address === walletAddress || seat.address === walletAddress || seat.player.id === walletAddress))
+    seat && (
+      // Socket match is the most precise single-connection identifier
+      (socket?.id && (seat.socketId === socket.id || seat.player?.socketId === socket.id)) ||
+      // Or strict numerical seatId match from game context
+      (seatId !== null && seatId !== undefined && (seatNumber === seatId || (seatNumber - 1) === seatId))
     )
   );
 
@@ -87,7 +87,7 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
     if (seat.player?.address) return convertOmittedAddress(seat.player.address);
     if (seat.address) return convertOmittedAddress(seat.address);
 
-    // ONLY use localStorage for YOUR actual seat if server name is missing
+    // ONLY use localStorage for YOUR single verified seat
     if (isMySeat) {
       const localSavedName = localStorage.getItem('playerName');
       if (localSavedName) return localSavedName;
