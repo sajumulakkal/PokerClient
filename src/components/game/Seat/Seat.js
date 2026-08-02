@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from 'react'
+ import React, { useContext, useEffect } from 'react'
 import Button from '../../buttons/Button'
 import modalContext from '../../../context/modal/modalContext'
 import globalContext from '../../../context/global/globalContext'
@@ -7,6 +7,7 @@ import { Form } from '../../forms/Form'
 import { FormGroup } from '../../forms/FormGroup'
 import { Input } from '../../forms/Input'
 import gameContext from '../../../context/game/gameContext'
+import socketContext from '../../../context/websocket/socketContext'
 import { PositionedUISlot } from '../PositionedUISlot'
 import { LastAction } from '../LastAction'
 import PokerCard from '../PokerCard'
@@ -26,18 +27,19 @@ import { convertOmittedAddress } from '../../../helpers/common'
 import './Seat.scss'
 
 export const Seat = ({ currentTable, seatNumber, sitDown }) => {
-  const { chipsAmount } = useContext(globalContext)
+  const { chipsAmount, walletAddress } = useContext(globalContext)
   const { standUp, seatId, rebuy } = useContext(gameContext)
+  const { socket } = useContext(socketContext)
 
   // 1. Resolve seat object safely (handles both Objects and Arrays without crashing .find())
   const resolveSeat = () => {
     if (!currentTable?.seats) return null;
 
-    // Check direct key access first
+    // Direct key access check (handles 1-based or 0-based keying)
     if (currentTable.seats[seatNumber]) return currentTable.seats[seatNumber];
     if (currentTable.seats[seatNumber - 1]) return currentTable.seats[seatNumber - 1];
 
-    // Safely convert object/array values into an iterable array before calling .find()
+    // Safely convert object/array values into an iterable array before searching
     const seatsList = Array.isArray(currentTable.seats)
       ? currentTable.seats
       : Object.values(currentTable.seats);
@@ -63,34 +65,43 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
     CS_RAISE: { text: 'Raise', bgColor: '#179ddc' },
   };
 
-  // 2. Extract display name robustly
+  // 2. Determine if this seat belongs to the local user
+  const isMySeat = Boolean(
+    seat && (
+      seatId === seatNumber ||
+      seatId === (seatNumber - 1) ||
+      (socket?.id && (seat.socketId === socket.id || seat.player?.socketId === socket.id)) ||
+      (walletAddress && (seat.player?.address === walletAddress || seat.address === walletAddress))
+    )
+  );
+
+  // 3. Extract display name robustly per seat
   const getPlayerName = () => {
     if (!seat) return "Empty Seat";
 
-    // Check if this seat belongs to the current local player
-    const localSavedName = localStorage.getItem('playerName');
-    const isMySeat = (seatId === seatNumber || seatId === (seatNumber - 1));
-
-    // Server-provided custom names (ignore default fallback "Player" if local name exists)
+    // Direct server-provided seat properties
     if (seat.player?.name && seat.player.name !== 'Player') return seat.player.name;
     if (seat.player?.username) return seat.player.username;
     if (seat.playerName) return seat.playerName;
     if (seat.name && seat.name !== 'Player') return seat.name;
 
-    // Address fallback
+    // Address abbreviation fallback
     if (seat.player?.address) return convertOmittedAddress(seat.player.address);
     if (seat.address) return convertOmittedAddress(seat.address);
 
-    // Local storage override for current user seat
-    if (isMySeat && localSavedName) {
-      return localSavedName;
+    // Fallback local name ONLY if it's the current user's seat
+    if (isMySeat) {
+      const localSavedName = localStorage.getItem('playerName');
+      if (localSavedName) return localSavedName;
     }
 
-    return seat.player?.name || localSavedName || "Player";
+    return seat.player?.name || "Player";
   };
 
+  const displayName = getPlayerName();
+
   return (
-    <StyledSeat>
+    <StyledSeat style={{ position: 'relative' }}>
       {!seat ? (
         <EmptySeat onClick={() => sitDown && sitDown(seatNumber)}>
           <div className="empty-set-wrapper" style={{ cursor: 'pointer' }}>
@@ -104,6 +115,9 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
             textAlign: 'center',
             justifyContent: 'center',
             alignItems: 'center',
+            borderRadius: '50%',
+            boxShadow: isMySeat ? '0 0 15px #21a68e' : 'none',
+            border: isMySeat ? '2px solid #21a68e' : 'none',
           }}
         >
           {/* Bet Pill and Last Action Display */}
@@ -193,9 +207,9 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
             style={{ minWidth: '150px', zIndex: '55' }}
             origin="bottom center"
           >
-            <NameTag>
+            <NameTag style={{ background: isMySeat ? '#0a3630' : undefined, border: isMySeat ? '1px solid #21a68e' : undefined }}>
               <ColoredText primary textAlign="center" style={{ fontSize: '13px', fontWeight: 'bold' }}>
-                {getPlayerName()}
+                {displayName} {isMySeat ? <span style={{ color: '#21a68e' }}>(YOU)</span> : ''}
                 <br />
                 {seat.stack !== undefined && seat.stack !== null && (
                   <ColoredText secondary style={{ fontSize: '12px', color: '#21a68e' }}>
