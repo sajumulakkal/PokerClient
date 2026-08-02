@@ -1,4 +1,4 @@
- import React, { useContext, useEffect } from 'react'
+import React, { useContext, useEffect } from 'react'
 import Button from '../../buttons/Button'
 import modalContext from '../../../context/modal/modalContext'
 import globalContext from '../../../context/global/globalContext'
@@ -75,27 +75,48 @@ export const Seat = ({ currentTable, seatNumber, sitDown }) => {
     )
   );
 
-  // 3. Extract display name robustly per seat
+  // 3. Robustly extract display name for ALL players (cross-referencing currentTable.players)
   const getPlayerName = () => {
     if (!seat) return "Empty Seat";
 
-    // Direct server-provided seat properties
+    // A. Direct seat object name checks
     if (seat.player?.name && seat.player.name !== 'Player') return seat.player.name;
     if (seat.player?.username) return seat.player.username;
     if (seat.playerName) return seat.playerName;
     if (seat.name && seat.name !== 'Player') return seat.name;
 
-    // Address abbreviation fallback
-    if (seat.player?.address) return convertOmittedAddress(seat.player.address);
-    if (seat.address) return convertOmittedAddress(seat.address);
+    // B. Search currentTable.players array for matching socketId or address
+    if (currentTable?.players) {
+      const playersList = Array.isArray(currentTable.players)
+        ? currentTable.players
+        : Object.values(currentTable.players);
 
-    // Fallback local name ONLY if it's the current user's seat
+      const matchedPlayer = playersList.find((p) => 
+        p && (
+          (seat.socketId && p.socketId === seat.socketId) ||
+          (seat.player?.socketId && p.socketId === seat.player.socketId) ||
+          (seat.player?.id && p.id === seat.player.id) ||
+          (seat.player?.address && p.id === seat.player.address)
+        )
+      );
+
+      if (matchedPlayer?.name && matchedPlayer.name !== 'Player') {
+        return matchedPlayer.name;
+      }
+    }
+
+    // C. Fallback to local storage for current user seat
     if (isMySeat) {
       const localSavedName = localStorage.getItem('playerName');
       if (localSavedName) return localSavedName;
     }
 
-    return seat.player?.name || "Player";
+    // D. Address abbreviation fallback
+    if (seat.player?.address) return convertOmittedAddress(seat.player.address);
+    if (seat.address) return convertOmittedAddress(seat.address);
+
+    // E. Dynamic fallback by Seat number if name is missing (e.g. "Player 1", "Player 2")
+    return seat.player?.name || `Player ${seatNumber}`;
   };
 
   const displayName = getPlayerName();
